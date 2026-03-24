@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import Header from './components/Header'
 import ProductRow from './components/ProductRow'
@@ -9,6 +9,10 @@ import { CartProvider } from './context/CartContext'
 function LandingPage() {
   const [category, setCategory] = useState(null)
   const { data, loading, error } = useLandingPage('current_user')
+
+  useEffect(() => {
+    window.analytics?.trackLandingPageView()
+  }, [])
 
   const sections = useMemo(() => {
     if (!data?.sections) return []

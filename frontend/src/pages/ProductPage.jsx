@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useLocation, useParams, useNavigate } from 'react-router-dom'
 import { useAlsoBought } from '../hooks/useRecommendations'
 import { useCart } from '../context/CartContext'
@@ -38,6 +38,12 @@ export default function ProductPage() {
   const [added, setAdded] = useState(false)
   const product = state?.product
   const { data: alsoBought, loading } = useAlsoBought(id)
+
+  useEffect(() => {
+    if (product) {
+      window.analytics?.trackProductDisplayPageView({ product_id: String(product.id), product_name: product.name })
+    }
+  }, [id])
 
   function handleAddToCart() {
     addItem(product)

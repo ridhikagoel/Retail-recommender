@@ -33,8 +33,11 @@
   }
 
   window.analytics = {
-    trackPageView() {
-      send({ event_type: 'page_view' })
+    trackLandingPageView() {
+      send({ event_type: 'landing_page_view' })
+    },
+    trackProductDisplayPageView({ product_id, product_name } = {}) {
+      send({ event_type: 'product_display_page_view', product_id, product_name })
     },
     trackProductClick({ product_id, product_name } = {}) {
       send({ event_type: 'product_click', product_id, product_name })
@@ -43,6 +46,4 @@
       send({ event_type: 'add_to_cart', product_id, product_name })
     },
   }
-
-  window.analytics.trackPageView()
 })()
