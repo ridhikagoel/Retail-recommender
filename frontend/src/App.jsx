@@ -1,9 +1,11 @@
 import React, { useState, useMemo } from 'react'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import Header from './components/Header'
 import ProductRow from './components/ProductRow'
 import { useLandingPage } from './hooks/useRecommendations'
+import ProductPage from './pages/ProductPage'
 
-export default function App() {
+function LandingPage() {
   const [category, setCategory] = useState(null)
   const { data, loading, error } = useLandingPage('current_user')
 
@@ -87,6 +89,17 @@ export default function App() {
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
       `}</style>
     </div>
+  )
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/product/:id" element={<ProductPage />} />
+      </Routes>
+    </BrowserRouter>
   )
 }
 

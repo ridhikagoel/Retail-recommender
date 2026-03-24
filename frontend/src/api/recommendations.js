@@ -25,3 +25,6 @@ export const getNewArrivals  = (n = 8) =>
 
 export const getPriceDrops   = (n = 8, minPct = 10) =>
   api.get('/reco/price-drops', { params: { n, min_pct: minPct } }).then(r => r.data)
+
+export const getAlsoBought   = (productId, n = 6) =>
+  api.get('/reco/also-bought', { params: { product_id: productId, n } }).then(r => r.data)

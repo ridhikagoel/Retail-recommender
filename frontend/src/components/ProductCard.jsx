@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 const CATEGORY_COLORS = {
   Electronics: '#3b82f6',
@@ -39,6 +40,7 @@ function shortNum(n) {
 
 export default function ProductCard({ product }) {
   const [hovered, setHovered] = useState(false)
+  const navigate = useNavigate()
   const {
     name, category, brand, price, original_price,
     rating, review_count, badge, reason,
@@ -54,6 +56,7 @@ export default function ProductCard({ product }) {
       style={{ ...s.card, ...(hovered ? s.cardHover : {}) }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      onClick={() => navigate(`/product/${product.id}`, { state: { product } })}
     >
       {/* Category accent bar */}
       <div style={{ ...s.accentBar, background: accentColor }} />
