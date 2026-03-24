@@ -23,6 +23,7 @@ class RedisCache:
                 password=REDIS_PASSWORD or None,
                 decode_responses=True,
                 socket_connect_timeout=2,
+                ssl=True,
             )
             self._client.ping()
         except Exception:
