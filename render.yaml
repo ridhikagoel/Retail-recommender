@@ -1,0 +1,43 @@
+services:
+  - type: web
+    name: retail-recommender-api
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: APP_SECRET_KEY
+        generateValue: true
+      - key: POSTGRES_HOST
+        sync: false       # fill in from Supabase
+      - key: POSTGRES_PORT
+        value: "5432"
+      - key: POSTGRES_DB
+        sync: false
+      - key: POSTGRES_USER
+        sync: false
+      - key: POSTGRES_PASSWORD
+        sync: false
+      - key: REDIS_HOST
+        sync: false       # fill in from Upstash
+      - key: REDIS_PORT
+        value: "6379"
+      - key: REDIS_PASSWORD
+        sync: false
+      - key: REDIS_TTL_SECONDS
+        value: "900"
+      - key: RECO_DEFAULT_N
+        value: "8"
+      - key: RECO_MIN_REVIEWS
+        value: "10"
+      - key: RECO_TRENDING_DAYS
+        value: "7"
+      - key: RECO_COLLAB_MIN_SIMILARITY
+        value: "0.1"
+      - key: AB_TESTING_ENABLED
+        value: "false"
+      - key: AB_TEST_VARIANT
+        value: "control"
+      - key: ALLOWED_ORIGINS
+        sync: false       # set to your Vercel URL after deploy, e.g. https://retail-recommender.vercel.app
