@@ -1,6 +1,8 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useLocation, useParams, useNavigate } from 'react-router-dom'
 import { useAlsoBought } from '../hooks/useRecommendations'
+import { useCart } from '../context/CartContext'
+import Header from '../components/Header'
 import ProductRow from '../components/ProductRow'
 
 const CATEGORY_COLORS = {
@@ -32,8 +34,16 @@ export default function ProductPage() {
   const { id } = useParams()
   const { state } = useLocation()
   const navigate = useNavigate()
+  const { addItem } = useCart()
+  const [added, setAdded] = useState(false)
   const product = state?.product
   const { data: alsoBought, loading } = useAlsoBought(id)
+
+  function handleAddToCart() {
+    addItem(product)
+    setAdded(true)
+    setTimeout(() => setAdded(false), 2000)
+  }
 
   if (!product) {
     return (
@@ -55,6 +65,8 @@ export default function ProductPage() {
 
   return (
     <div style={s.page}>
+      <Header />
+
       {/* Top bar */}
       <div style={{ ...s.topBar, borderBottomColor: accentColor }}>
         <button style={s.backBtn} onClick={() => navigate(-1)}>← Back</button>
@@ -106,7 +118,12 @@ export default function ProductPage() {
               </div>
             )}
 
-            <button style={{ ...s.addToCart, background: accentColor }}>Add to Cart</button>
+            <button
+              style={{ ...s.addToCart, background: added ? '#10b981' : accentColor }}
+              onClick={handleAddToCart}
+            >
+              {added ? '✓ Added to Cart' : 'Add to Cart'}
+            </button>
           </div>
         </div>
 
