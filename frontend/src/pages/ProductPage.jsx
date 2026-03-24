@@ -42,6 +42,7 @@ export default function ProductPage() {
   function handleAddToCart() {
     addItem(product)
     setAdded(true)
+    window.analytics?.trackAddToCart({ product_id: String(product.id), product_name: product.name })
     setTimeout(() => setAdded(false), 2000)
   }
 

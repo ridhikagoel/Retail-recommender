@@ -56,7 +56,10 @@ export default function ProductCard({ product }) {
       style={{ ...s.card, ...(hovered ? s.cardHover : {}) }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      onClick={() => navigate(`/product/${product.id}`, { state: { product } })}
+      onClick={() => {
+        window.analytics?.trackProductClick({ product_id: String(product.id), product_name: product.name })
+        navigate(`/product/${product.id}`, { state: { product } })
+      }}
     >
       {/* Category accent bar */}
       <div style={{ ...s.accentBar, background: accentColor }} />
