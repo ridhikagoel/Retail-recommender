@@ -66,6 +66,7 @@ function LandingPage() {
                 title={title}
                 subtitle={subtitle}
                 products={products}
+                strategy={title}
               />
             ))}
 

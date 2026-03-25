@@ -38,7 +38,7 @@ function shortNum(n) {
   return n
 }
 
-export default function ProductCard({ product }) {
+export default function ProductCard({ product, strategy }) {
   const [hovered, setHovered] = useState(false)
   const navigate = useNavigate()
   const {
@@ -57,7 +57,7 @@ export default function ProductCard({ product }) {
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onClick={() => {
-        window.analytics?.trackProductClick({ product_id: String(product.id), product_name: product.name })
+        window.analytics?.trackProductClick({ product_id: String(product.id), product_name: product.name, category: product.category, strategy })
         navigate(`/product/${product.id}`, { state: { product } })
       }}
     >

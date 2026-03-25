@@ -1,7 +1,7 @@
 import React from 'react'
 import ProductCard from './ProductCard'
 
-export default function ProductRow({ title, subtitle, products, loading }) {
+export default function ProductRow({ title, subtitle, products, loading, strategy }) {
   return (
     <section style={s.section}>
       <div style={s.heading}>
@@ -17,7 +17,7 @@ export default function ProductRow({ title, subtitle, products, loading }) {
         </div>
       ) : products && products.length > 0 ? (
         <div style={s.row}>
-          {products.map(p => <ProductCard key={p.id} product={p} />)}
+          {products.map(p => <ProductCard key={p.id} product={p} strategy={strategy} />)}
         </div>
       ) : (
         <p style={s.empty}>No products to show.</p>
