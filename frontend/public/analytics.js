@@ -20,10 +20,12 @@
 
   /* ── Config ─────────────────────────────────────────────────────────────── */
 
-  // Populated by Vite at build time; falls back to relative path for dev.
-  var API_URL = (typeof import_meta_env !== 'undefined' && import_meta_env.VITE_API_URL)
-    ? import_meta_env.VITE_API_URL
-    : (window.__API_URL__ || '');   // set window.__API_URL__ in index.html if needed
+  // Read backend URL from the data-api attribute on this script tag, then
+  // fall back to VITE_API_URL (build-time) or same-origin.
+  var _me = document.currentScript;
+  var API_URL = (_me && _me.getAttribute('data-api'))
+    || (typeof import_meta_env !== 'undefined' && import_meta_env.VITE_API_URL)
+    || '';
 
   /* ── Session & variant ──────────────────────────────────────────────────── */
 
