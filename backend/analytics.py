@@ -39,29 +39,31 @@ def _conn() -> Generator:
 
 # ── Schema init ──────────────────────────────────────────────────────────────
 
-_INIT_SQL = """
-CREATE TABLE IF NOT EXISTS ab_events (
-    id           BIGSERIAL    PRIMARY KEY,
-    session_id   VARCHAR(120) NOT NULL,
-    user_id      VARCHAR(120),
-    variant      VARCHAR(20)  NOT NULL,
-    event_type   VARCHAR(60)  NOT NULL,
-    product_id   VARCHAR(30),
-    product_name VARCHAR(255),
-    category     VARCHAR(80),
-    strategy     VARCHAR(100),
-    page_url     TEXT,
-    referrer     TEXT,
-    created_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS idx_ab_variant    ON ab_events (variant);
-CREATE INDEX IF NOT EXISTS idx_ab_session    ON ab_events (session_id);
-CREATE INDEX IF NOT EXISTS idx_ab_event_type ON ab_events (event_type);
-CREATE INDEX IF NOT EXISTS idx_ab_created_at ON ab_events (created_at);
-CREATE INDEX IF NOT EXISTS idx_ab_strategy   ON ab_events (strategy)
-    WHERE strategy IS NOT NULL;
-"""
+# Each statement is executed separately — psycopg2 cursor.execute() is
+# unreliable with multiple semicolon-separated statements in one call.
+_INIT_STATEMENTS = [
+    """
+    CREATE TABLE IF NOT EXISTS ab_events (
+        id           BIGSERIAL    PRIMARY KEY,
+        session_id   VARCHAR(120) NOT NULL,
+        user_id      VARCHAR(120),
+        variant      VARCHAR(20)  NOT NULL,
+        event_type   VARCHAR(60)  NOT NULL,
+        product_id   VARCHAR(30),
+        product_name VARCHAR(255),
+        category     VARCHAR(80),
+        strategy     VARCHAR(100),
+        page_url     TEXT,
+        referrer     TEXT,
+        created_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_ab_variant    ON ab_events (variant)",
+    "CREATE INDEX IF NOT EXISTS idx_ab_session    ON ab_events (session_id)",
+    "CREATE INDEX IF NOT EXISTS idx_ab_event_type ON ab_events (event_type)",
+    "CREATE INDEX IF NOT EXISTS idx_ab_created_at ON ab_events (created_at)",
+    "CREATE INDEX IF NOT EXISTS idx_ab_strategy   ON ab_events (strategy)",
+]
 
 
 def init_events_table() -> None:
@@ -69,7 +71,8 @@ def init_events_table() -> None:
     try:
         with _conn() as con:
             with con.cursor() as cur:
-                cur.execute(_INIT_SQL)
+                for stmt in _INIT_STATEMENTS:
+                    cur.execute(stmt)
         logger.info("ab_events table ready")
     except Exception as exc:
         logger.warning("Could not initialise ab_events table: %s", exc)
