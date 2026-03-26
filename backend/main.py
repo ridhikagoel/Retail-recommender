@@ -2,6 +2,7 @@ import os
 
 from fastapi import FastAPI, Query, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
 
 from backend.recommender import (
     personalized_for_you, customers_also_bought, best_sellers,
@@ -11,11 +12,13 @@ from backend.recommender import (
 )
 from backend.schemas import (
     RecommendedProduct, LandingPageResponse, HealthResponse,
+    AnalyticsEvent, VariantAssignment,
 )
 from backend.cache import RedisCache, get_cache, make_key
-from backend.config import (
-    RECO_DEFAULT_N, AB_TESTING_ENABLED, AB_TEST_VARIANT,
-)
+from backend.config import RECO_DEFAULT_N
+from backend.ab_testing import assign_variant, EXPERIMENT_META
+from backend import analytics, stats
+from backend.dashboard import DASHBOARD_HTML
 
 app = FastAPI(title="Retail Recommendation Engine", version="1.0.0")
 
@@ -33,23 +36,30 @@ app.add_middleware(
 )
 
 
-# ── A/B routing helpers ───────────────────────────────────────────────────────
+# ── Startup ────────────────────────────────────────────────────────────────
 
-def _resolve_personalized(user_id: str, n: int) -> list[dict]:
+@app.on_event("startup")
+def _startup():
+    analytics.init_events_table()
+
+
+# ── A/B routing helpers ────────────────────────────────────────────────────
+
+def _resolve_personalized(user_id: str, n: int, variant: str) -> list[dict]:
     """treatment: fall back to best_sellers as the variant strategy."""
-    if AB_TESTING_ENABLED and AB_TEST_VARIANT == "treatment":
+    if variant == "treatment":
         return best_sellers(n)
     return personalized_for_you(user_id, n)
 
 
-def _resolve_trending(n: int, category: str | None) -> list[dict]:
+def _resolve_trending(n: int, category: str | None, variant: str) -> list[dict]:
     """treatment: use best_sellers (by velocity+rating) instead of trending."""
-    if AB_TESTING_ENABLED and AB_TEST_VARIANT == "treatment":
+    if variant == "treatment":
         return best_sellers(n, category)
     return trending_now(n, category)
 
 
-# ── Routes ────────────────────────────────────────────────────────────────────
+# ── Routes ─────────────────────────────────────────────────────────────────
 
 @app.get("/health", response_model=HealthResponse)
 def health(cache: RedisCache = Depends(get_cache)):
@@ -62,10 +72,12 @@ def health(cache: RedisCache = Depends(get_cache)):
 
 @app.get("/api/landing-page", response_model=LandingPageResponse)
 def landing_page(
-    user_id: str = Query(default="current_user"),
+    user_id:    str = Query(default="current_user"),
+    session_id: str = Query(default=""),
     cache: RedisCache = Depends(get_cache),
 ):
-    key = make_key("landing", user_id)
+    variant = assign_variant(session_id) if session_id else "control"
+    key = make_key("landing", user_id, variant)
     if hit := cache.get(key):
         return hit
     result = {"user_id": user_id, "sections": get_landing_page(user_id)}
@@ -75,14 +87,16 @@ def landing_page(
 
 @app.get("/api/reco/personalized", response_model=list[RecommendedProduct])
 def reco_personalized(
-    user_id: str = Query(default="current_user"),
+    user_id:    str = Query(default="current_user"),
+    session_id: str = Query(default=""),
     n: int = Query(default=RECO_DEFAULT_N, ge=1, le=50),
     cache: RedisCache = Depends(get_cache),
 ):
-    key = make_key("personalized", user_id, n)
+    variant = assign_variant(session_id) if session_id else "control"
+    key = make_key("personalized", user_id, n, variant)
     if hit := cache.get(key):
         return hit
-    result = _resolve_personalized(user_id, n)
+    result = _resolve_personalized(user_id, n, variant)
     cache.set(key, result)
     return result
 
@@ -143,14 +157,16 @@ def reco_flash_deals(
 
 @app.get("/api/reco/trending", response_model=list[RecommendedProduct])
 def reco_trending(
-    category: str | None = None,
+    category:   str | None = None,
+    session_id: str = Query(default=""),
     n: int = Query(default=RECO_DEFAULT_N, ge=1, le=50),
     cache: RedisCache = Depends(get_cache),
 ):
-    key = make_key("trending", category, n)
+    variant = assign_variant(session_id) if session_id else "control"
+    key = make_key("trending", category, n, variant)
     if hit := cache.get(key):
         return hit
-    result = _resolve_trending(n, category)
+    result = _resolve_trending(n, category, variant)
     cache.set(key, result)
     return result
 
@@ -236,3 +252,72 @@ def reco_price_drops(
     result = price_drop_alerts(n, min_pct)
     cache.set(key, result)
     return result
+
+
+# ── A/B Testing endpoints ──────────────────────────────────────────────────
+
+@app.post("/events", status_code=204)
+def ingest_event(event: AnalyticsEvent):
+    """
+    Receive a browser analytics event and persist it with the server-side
+    variant assignment for that session.
+    """
+    data = event.model_dump()
+    # Always assign variant server-side (client-supplied value is advisory)
+    data["variant"] = assign_variant(event.session_id)
+    analytics.store_event(data)
+
+
+@app.get("/api/ab/variant", response_model=VariantAssignment)
+def get_variant(session_id: str = Query(...)):
+    """
+    Return the variant assigned to a session.  Called by the analytics tracker
+    on page load so the client can tag events with the correct variant.
+    """
+    return VariantAssignment(
+        session_id=session_id,
+        variant=assign_variant(session_id),
+        experiment_id=EXPERIMENT_META["id"],
+    )
+
+
+@app.get("/api/ab/config")
+def get_ab_config():
+    """Return current experiment configuration."""
+    return EXPERIMENT_META
+
+
+@app.get("/api/ab/results")
+def get_ab_results():
+    """
+    Full A/B test statistical analysis.
+
+    Runs two-proportion z-tests on the primary (add-to-cart) and secondary
+    (click-through, cart-per-click) metrics, adds Bayesian posterior
+    probability, power analysis, and practical-significance interpretation.
+    """
+    variant_metrics   = analytics.get_variant_metrics()
+    strategy_breakdown = analytics.get_strategy_breakdown()
+    time_series       = analytics.get_daily_time_series(14)
+    top_products      = analytics.get_top_converting_products(10)
+
+    analysis = stats.analyse_experiment(variant_metrics)
+    pm       = analysis["primary_metric"]
+
+    return {
+        "experiment":        EXPERIMENT_META,
+        "primary_metric":    pm,
+        "secondary_metrics": analysis["secondary_metrics"],
+        "strategy_breakdown": strategy_breakdown,
+        "time_series":       time_series,
+        "top_converting_products": top_products,
+        "raw_variant_metrics":     variant_metrics,
+    }
+
+
+# ── Dashboard ──────────────────────────────────────────────────────────────
+
+@app.get("/dashboard", response_class=HTMLResponse, include_in_schema=False)
+def dashboard():
+    """Serve the self-contained A/B test dashboard."""
+    return HTMLResponse(content=DASHBOARD_HTML)
