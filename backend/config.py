@@ -16,9 +16,11 @@ POSTGRES_DB   = os.getenv("POSTGRES_DB", "recommender")
 POSTGRES_USER = os.getenv("POSTGRES_USER", "admin")
 POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "")
 
+# Append sslmode=require for Supabase / hosted Postgres (ignored by local PG)
+_sslmode = os.getenv("POSTGRES_SSLMODE", "require")
 DATABASE_URL = (
     f"postgresql://{quote_plus(POSTGRES_USER)}:{quote_plus(POSTGRES_PASSWORD)}"
-    f"@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
+    f"@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}?sslmode={_sslmode}"
 )
 
 # Redis

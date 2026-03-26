@@ -63,11 +63,40 @@ def _resolve_trending(n: int, category: str | None, variant: str) -> list[dict]:
 
 @app.get("/health", response_model=HealthResponse)
 def health(cache: RedisCache = Depends(get_cache)):
+    try:
+        import psycopg2
+        from backend.config import DATABASE_URL
+        conn = psycopg2.connect(DATABASE_URL, connect_timeout=3)
+        conn.close()
+        db_status = "connected"
+    except Exception as e:
+        db_status = f"unavailable: {e}"
     return {
         "status": "ok",
         "cache": "connected" if cache.is_connected() else "unavailable",
-        "db": "connected",
+        "db": db_status,
     }
+
+
+@app.get("/debug/db", include_in_schema=False)
+def debug_db():
+    """Diagnostic endpoint — shows DB connection status and event count."""
+    import psycopg2
+    from backend.config import DATABASE_URL
+    result = {"database_url_prefix": DATABASE_URL[:40] + "…", "table_exists": False,
+              "row_count": 0, "error": None}
+    try:
+        conn = psycopg2.connect(DATABASE_URL, connect_timeout=5)
+        cur  = conn.cursor()
+        cur.execute("SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name='ab_events')")
+        result["table_exists"] = cur.fetchone()[0]
+        if result["table_exists"]:
+            cur.execute("SELECT COUNT(*) FROM ab_events")
+            result["row_count"] = cur.fetchone()[0]
+        conn.close()
+    except Exception as e:
+        result["error"] = str(e)
+    return result
 
 
 @app.get("/api/landing-page", response_model=LandingPageResponse)
