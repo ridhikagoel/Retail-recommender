@@ -47,3 +47,26 @@ class HealthResponse(BaseModel):
     status: str
     cache: str  # "connected" | "unavailable"
     db: str     # "connected" | "unavailable"
+
+
+# ── A/B Testing schemas ──────────────────────────────────────────────────────
+
+class AnalyticsEvent(BaseModel):
+    """Payload sent from the browser analytics tracker to POST /events."""
+    session_id:   str
+    user_id:      str | None = None
+    variant:      str | None = None          # assigned by server if omitted
+    event_type:   str                        # landing_page_view | product_click | add_to_cart | …
+    product_id:   str | None = None
+    product_name: str | None = None
+    category:     str | None = None
+    strategy:     str | None = None
+    page_url:     str | None = None
+    referrer:     str | None = None
+    timestamp:    str | None = None          # ISO-8601
+
+
+class VariantAssignment(BaseModel):
+    session_id: str
+    variant:    str           # "control" | "treatment"
+    experiment_id: str

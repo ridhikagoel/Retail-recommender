@@ -36,8 +36,10 @@ services:
       - key: RECO_COLLAB_MIN_SIMILARITY
         value: "0.1"
       - key: AB_TESTING_ENABLED
-        value: "false"
-      - key: AB_TEST_VARIANT
-        value: "control"
+        value: "false"          # set to "true" to enable the A/B agent
+      - key: AB_EXPERIMENT_ID
+        value: "exp_reco_v1"
+      - key: AB_TRAFFIC_SPLIT
+        value: "0.5"            # fraction of sessions routed to treatment
       - key: ALLOWED_ORIGINS
         sync: false       # set to your Vercel URL after deploy, e.g. https://retail-recommender.vercel.app
