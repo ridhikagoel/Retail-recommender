@@ -5,6 +5,17 @@
   const script = document.currentScript
   const API_URL = (script && script.dataset.api) || 'http://localhost:8000'
 
+  function getDeviceType() {
+    const ua = navigator.userAgent
+    if (/Mobi|Android|iPhone|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua)) {
+      return 'mobile'
+    }
+    if (/iPad|Tablet|(Android(?!.*Mobile))/i.test(ua) || (window.innerWidth >= 768 && window.innerWidth < 1024)) {
+      return 'tablet'
+    }
+    return 'desktop'
+  }
+
   function getSessionId() {
     let id = sessionStorage.getItem('_ra_sid')
     if (!id) {
@@ -17,6 +28,7 @@
   function send(payload) {
     const body = JSON.stringify({
       session_id: getSessionId(),
+      device_type: getDeviceType(),
       page_url: window.location.href,
       referrer: document.referrer || null,
       timestamp: new Date().toISOString(),
